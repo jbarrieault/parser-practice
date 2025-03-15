@@ -39,6 +39,8 @@ class Lexer
     TAB
   ]
 
+  TERMINAL_CHARACTERS = SYMBOLS + WHITESPACE_CHARACTERS
+
   def initialize(input)
     @input = input
     @position =  nil
@@ -70,12 +72,14 @@ class Lexer
   end
 
   def consume_value_token
-    # TODO.
+    token = char
 
-    # a non-symbol first char means
-    # the token may be N chars long.
-    # this isn't handle strings so that leaves us with:
-    # 1, 123, 3.14, true, false
+    until TERMINAL_CHARACTERS.include?(peek_char)
+      consume_char
+      token << char
+    end
+
+    token
   end
 
   def consume_string_literal_token
