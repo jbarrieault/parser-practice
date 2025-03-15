@@ -1,17 +1,31 @@
 require "minitest/autorun"
 
 class Lexer
+  class TokenizationError < StandardError; end
+
   LBRACE = "{"
   RBRACE = "}"
+  LBRACKET = "["
+  RBRACKET = "]"
   COLON = ":"
   COMMA = ","
 
   SYMBOLS = [
     LBRACE,
     RBRACE,
+    LBRACKET,
+    RBRACKET,
     COLON,
     COMMA
   ]
+
+  DOUBLE_QUOTE = "\""
+  # let's not support single quote strings initially
+  # SINGLE_QUOTE = "'"
+
+  NULL = "null"
+  TRUE = "true"
+  FALSE = "false"
 
   SPACE = " "
   NEWLINE = "\n"
@@ -48,8 +62,37 @@ class Lexer
     return if char.nil?
     return char if SYMBOLS.include? char
 
-    # TODO: parse multi-char tokens
-    char
+    if char == DOUBLE_QUOTE
+      consume_string_literal_token
+    else
+      consume_value_token
+    end
+  end
+
+  def consume_value_token
+    # TODO.
+
+    # a non-symbol first char means
+    # the token may be N chars long.
+    # this isn't handle strings so that leaves us with:
+    # 1, 123, 3.14, true, false
+  end
+
+  def consume_string_literal_token
+    initial_position = position
+
+    token = char # opening "
+    until consume_char == "\"" || (position > input.length - 1)
+      token << char
+    end
+
+    if position > input.length - 1
+      raise TokenizationError, "Tokenization failed: unterminated string literal at position #{initial_position}"
+    end
+
+    token << char # closing "
+
+    return token
   end
 
   def consume_char
@@ -80,10 +123,9 @@ end
 
 class LexerTest < Minitest::Test
   def test_lexer
-    # invalid, but just for now
     input = <<~JSON
        {
-        "id": 123
+        "id: 123
       }
     JSON
 
