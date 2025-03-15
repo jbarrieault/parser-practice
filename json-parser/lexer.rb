@@ -87,6 +87,9 @@ class Lexer
     end
 
     if position > input.length - 1
+      # TODO: it would be fun to print a preview of the location:
+      #  "id : 123 }
+      #  ^
       raise TokenizationError, "Tokenization failed: unterminated string literal at position #{initial_position}"
     end
 
@@ -125,7 +128,7 @@ class LexerTest < Minitest::Test
   def test_lexer
     input = <<~JSON
        {
-        "id: 123
+        "id": 123
       }
     JSON
 
