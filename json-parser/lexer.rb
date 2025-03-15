@@ -86,15 +86,15 @@ class Lexer
     initial_position = position
 
     token = char # opening "
-    until consume_char == "\"" || (position > input.length - 1)
-      token << char
-    end
+    until consume_char == "\""
+      if char.nil?
+        # TODO: it would be fun to print a preview of the location:
+        #  "id : 123 }
+        #  ^
+        raise TokenizationError, "Tokenization failed: unterminated string literal at position #{initial_position}"
+      end
 
-    if position > input.length - 1
-      # TODO: it would be fun to print a preview of the location:
-      #  "id : 123 }
-      #  ^
-      raise TokenizationError, "Tokenization failed: unterminated string literal at position #{initial_position}"
+      token << char
     end
 
     token << char # closing "
