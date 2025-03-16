@@ -129,18 +129,44 @@ class Lexer
 end
 
 class LexerTest < Minitest::Test
-  def test_lexer
+  def test_lexer_basic
     input = <<~JSON
        {
-        "id": 123
+        "id": 123,
+        "details": {
+          "name": "jacob",
+          "hobbies": ["programming", "pickleball"]
+        }
       }
     JSON
 
     lexer = Lexer.new(input)
     lexer.tokenize
 
-    assert_equal(lexer.tokens, [
-      "{", "\"id\"", ":", "123", "}"
-    ])
+    assert_equal([
+      "{",
+       "\"id\"", ":", "123", ",",
+       "\"details\"", ":", "{",
+       "\"name\"", ":", "\"jacob\"", ",",
+       "\"hobbies\"", ":", "[", "\"programming\"", ",", "\"pickleball\"", "]",
+       "}",
+       "}"
+    ], lexer.tokens)
+  end
+
+  def test_lexer_unterminated_string_literal
+    input = <<~JSON
+       {
+        "id: 123
+      }
+    JSON
+
+    lexer = Lexer.new(input)
+
+    err = assert_raises(Lexer::TokenizationError) do
+      lexer.tokenize
+    end
+
+    assert_equal "Tokenization failed: unterminated string literal at position 5", err.message
   end
 end
