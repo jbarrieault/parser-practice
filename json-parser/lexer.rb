@@ -83,17 +83,11 @@ class Lexer
   end
 
   def consume_string_literal_token
-    initial_position = position
+    opening_position = position
 
     token = char # opening "
     until consume_char == "\""
-      if char.nil?
-        # TODO: it would be fun to print a preview of the location:
-        #  "id : 123 }
-        #  ^
-        raise TokenizationError, "Tokenization failed: unterminated string literal at position #{initial_position}"
-      end
-
+      unclosed_string_literal_error!(opening_position) if char.nil?
       token << char
     end
 
@@ -126,6 +120,32 @@ class Lexer
   def peek_char
     input[position+1]
   end
+
+  def unclosed_string_literal_error!(opening_position)
+    error_line = nil
+    error_line_opening_position = nil
+    chars_seen = 0
+
+    input.each_line do |line|
+      next_chars_seen = chars_seen + line.length
+      if next_chars_seen >= opening_position
+        error_line = line
+        error_line_opening_position = opening_position - chars_seen
+        break
+      end
+
+      chars_seen = next_chars_seen
+    end
+
+    # TODO: use a sliding window to create a fixed size preview, in case the line is very long
+    preview = error_line
+
+    message = "Tokenization failed: unclosed string literal at position #{opening_position}:" \
+      "\n\t#{preview}" \
+      "\n\t\e[31m#{' '*error_line_opening_position}^\e[0m"
+
+    raise TokenizationError, message
+  end
 end
 
 class LexerTest < Minitest::Test
@@ -157,7 +177,8 @@ class LexerTest < Minitest::Test
   def test_lexer_unterminated_string_literal
     input = <<~JSON
        {
-        "id: 123
+        "id": 123,
+        "age: 34
       }
     JSON
 
@@ -167,6 +188,6 @@ class LexerTest < Minitest::Test
       lexer.tokenize
     end
 
-    assert_equal "Tokenization failed: unterminated string literal at position 5", err.message
+    assert_match /Tokenization failed: unclosed string literal at position 18/, err.message
   end
 end
