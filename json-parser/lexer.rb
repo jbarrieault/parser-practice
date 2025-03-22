@@ -1,8 +1,24 @@
 require "minitest/autorun"
 
+class Token
+  def initialize(type:, value:)
+    @type = type
+    @value = value
+  end
+
+  attr_reader :type, :value
+
+  def to_s
+    @value
+  end
+end
+
 class Lexer
   class TokenizationError < StandardError; end
 
+  JSON_NUMERIC = /\A-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
+
+  # Token types
   LBRACE = "{"
   RBRACE = "}"
   LBRACKET = "["
@@ -62,7 +78,7 @@ class Lexer
     consume_char
 
     return if char.nil?
-    return char if SYMBOLS.include? char
+    return Token.new(type: :SYMBOL, value: char) if SYMBOLS.include? char
 
     if char == DOUBLE_QUOTE
       consume_string_literal_token
@@ -72,28 +88,39 @@ class Lexer
   end
 
   def consume_value_token
-    token = char
+    value = char
 
     until TERMINAL_CHARACTERS.include?(peek_char)
       consume_char
-      token << char
+      value << char
     end
 
-    token
+    int, float = value.match(JSON_NUMERIC).deconstruct
+    if float
+      return Token.new(type: :FLOAT, value:)
+    elsif int
+      return Token.new(type: :INTEGER, value:)
+    elsif [TRUE, FALSE].include?(value)
+      return Token.new(type: BOOL, value:)
+    elsif value == NULL
+      return Token.new(type: NULL, value:)
+    else
+      raise "Unhandled token type for value: #{value}"
+    end
   end
 
   def consume_string_literal_token
     opening_position = position
 
-    token = char # opening "
+    value = char # opening "
     until consume_char == "\""
       unclosed_string_literal_error!(opening_position) if char.nil?
-      token << char
+      value << char
     end
 
-    token << char # closing "
+    value << char # closing "
 
-    return token
+    return Token.new(type: :STRING, value:)
   end
 
   def consume_char
@@ -171,7 +198,7 @@ class LexerTest < Minitest::Test
        "\"hobbies\"", ":", "[", "\"programming\"", ",", "\"pickleball\"", "]",
        "}",
        "}"
-    ], lexer.tokens)
+    ], lexer.tokens.map(&:value))
   end
 
   def test_lexer_unterminated_string_literal
