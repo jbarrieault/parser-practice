@@ -154,26 +154,29 @@ class Lexer
 
   def unclosed_string_literal_error!(opening_position)
     error_line = nil
-    error_line_opening_position = nil
     chars_seen = 0
 
     input.each_line do |line|
       next_chars_seen = chars_seen + line.length
       if next_chars_seen >= opening_position
-        error_line = line
-        error_line_opening_position = opening_position - chars_seen
+        error_line = line.chomp
         break
       end
 
       chars_seen = next_chars_seen
     end
 
-    # TODO: use a sliding window to create a fixed size preview, in case the line is very long
-    preview = error_line
+    preview_i = [opening_position-10, 0].max
+    preview_j = [opening_position+25, error_line.length-1].min
+    preview = error_line[preview_i..preview_j]
 
+    preview_error_position = opening_position - preview_i
+
+    # require 'pry'
+    # binding.pry
     message = "Tokenization failed: unclosed string literal at position #{opening_position}:" \
       "\n\t#{preview}" \
-      "\n\t\e[31m#{' '*error_line_opening_position}^\e[0m"
+      "\n\t\e[31m#{' '*preview_error_position}^\e[0m"
 
     raise TokenizationError, message
   end
@@ -224,5 +227,28 @@ class LexerTest < Minitest::Test
     end
 
     assert_match /Tokenization failed: unclosed string literal at position 18/, err.message
+  end
+
+  def test_lexer_unterminated_string_literal
+    input = <<~JSON
+       { "very_long_property_name_string_for_testing_unclosed_string_error_message_preview": "this string is never closed }
+    JSON
+
+    lexer = Lexer.new(input)
+
+    err = assert_raises(Lexer::TokenizationError) do
+      lexer.tokenize
+    end
+
+    expected_message = <<~MSG.chomp
+      Tokenization failed: unclosed string literal at position 86:
+      \tpreview": "this string is never clos
+      \t          ^
+    MSG
+
+    # remove the ANSI escape sequence coloring in the actual error message
+    uncolorized_err_message = err.message.gsub(/\e\[[0-9;]*m/, '')
+
+    assert_match(expected_message,uncolorized_err_message)
   end
 end
