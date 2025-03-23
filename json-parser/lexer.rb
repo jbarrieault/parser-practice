@@ -8,6 +8,10 @@ class Token
 
   attr_reader :type, :value
 
+  def to_a
+    [type, value]
+  end
+
   def to_s
     @value
   end
@@ -191,17 +195,18 @@ class LexerTest < Minitest::Test
     lexer = Lexer.new(input)
     lexer.tokenize
 
-    # TODO: update test to that correct type is assigned to each token
     assert_equal([
-      "{",
-       "\"id\"", ":", "123", ",",
-       "\"details\"", ":", "{",
-       "\"name\"", ":", "\"jacob\"", ",",
-       "\"hobbies\"", ":", "[", "\"programming\"", ",", "\"pickleball\"", "]",
-       "}", ",",
-       "\"health\"", ":", "6.5",
-       "}"
-    ], lexer.tokens.map(&:value))
+      [:SYMBOL, "{"],
+      [:STRING, "\"id\""], [:SYMBOL, ":"], [:INTEGER, "123"], [:SYMBOL, ","],
+      [:STRING, "\"details\""], [:SYMBOL, ":"], [:SYMBOL, "{"],
+      [:STRING, "\"name\""], [:SYMBOL, ":"], [:STRING, "\"jacob\""], [:SYMBOL, ","],
+      [:STRING, "\"hobbies\""], [:SYMBOL, ":"], [:SYMBOL, "["], [:STRING, "\"programming\""], [:SYMBOL, ","], [:STRING, "\"pickleball\""], [:SYMBOL, "]"],
+      [:SYMBOL, "}"], [:SYMBOL, ","],
+      [:STRING, "\"health\""], [:SYMBOL, ":"], [:FLOAT, "6.5"],
+      [:SYMBOL, "}"]
+    ],
+      lexer.tokens.map(&:to_a)
+    )
   end
 
   def test_lexer_unterminated_string_literal
