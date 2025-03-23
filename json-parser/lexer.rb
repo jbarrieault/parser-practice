@@ -183,20 +183,23 @@ class LexerTest < Minitest::Test
         "details": {
           "name": "jacob",
           "hobbies": ["programming", "pickleball"]
-        }
+        },
+        "health": 6.5
       }
     JSON
 
     lexer = Lexer.new(input)
     lexer.tokenize
 
+    # TODO: update test to that correct type is assigned to each token
     assert_equal([
       "{",
        "\"id\"", ":", "123", ",",
        "\"details\"", ":", "{",
        "\"name\"", ":", "\"jacob\"", ",",
        "\"hobbies\"", ":", "[", "\"programming\"", ",", "\"pickleball\"", "]",
-       "}",
+       "}", ",",
+       "\"health\"", ":", "6.5",
        "}"
     ], lexer.tokens.map(&:value))
   end
