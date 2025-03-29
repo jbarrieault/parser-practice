@@ -63,7 +63,7 @@ class Lexer
 
   def initialize(input)
     @input = input
-    @position =  nil
+    @position = nil
     @char = nil
     @tokens = []
   end
