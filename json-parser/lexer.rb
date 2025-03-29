@@ -212,6 +212,19 @@ class LexerTest < Minitest::Test
     )
   end
 
+  def test_lexer_top_level_array
+    input = <<~JSON
+      [1, "b", 3.14]
+    JSON
+
+    lexer = Lexer.new(input)
+    lexer.tokenize
+
+    assert_equal([
+      [:SYMBOL, "["], [:INTEGER, "1"], [:SYMBOL, ","], [:STRING, "\"b\""], [:SYMBOL, ","], [:FLOAT, "3.14"], [:SYMBOL, "]"]
+    ],lexer.tokens.map(&:to_a))
+  end
+
   def test_lexer_unterminated_string_literal
     input = <<~JSON
        {
