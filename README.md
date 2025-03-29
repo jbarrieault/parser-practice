@@ -5,6 +5,7 @@ This is a playground for me to practice things relating to the implementation of
 ### Patterns to explore
 - [ ] Recursive descent
 - [ ] AST construction and traversal
+- [ ] Streaming / Buffered parsing
 
 ### Application
 - [ ] JSON parser in Ruby
