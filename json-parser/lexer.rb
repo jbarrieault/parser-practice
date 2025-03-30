@@ -105,9 +105,9 @@ class Lexer
     elsif int
       return Token.new(type: :INTEGER, value:)
     elsif [TRUE, FALSE].include?(value)
-      return Token.new(type: BOOL, value:)
+      return Token.new(type: :BOOL, value:)
     elsif value == NULL
-      return Token.new(type: NULL, value:)
+      return Token.new(type: :NULL, value:)
     else
       raise "Unhandled token type for value: #{value}"
     end
