@@ -13,32 +13,41 @@ class Parser
   attr_reader :tokens, :position, :current_token
 
   def parse
-    until advance.nil?
-      case current_token.value
-      when Lexer::LBRACE
-        parse_object
-      when Lexer::LBRACKET
-        parse_array
-      else
-        parse_value
-      end
+    return if current_token.nil?
+
+    case current_token.value
+    when Lexer::LBRACE
+      parse_object
+    when Lexer::LBRACKET
+      parse_array
+    else
+      parse_value
     end
   end
 
   def parse_object
-    expect(Lexer::LBRACE)
+    expect(value: Lexer::LBRACE)
 
     # TODO: parse inner property/value pairs, then expect RBRACE
   end
 
   def parse_array
-    expect(Lexer::LBRACKET)
+    expect(value: Lexer::LBRACKET)
+    arr = []
 
-    # TODO: parse inner values, then expect RBRACKET
+    until current_token.nil? || current_token.value == Lexer::RBRACKET
+      val = parse
+      arr << val
+      expect(type: :SYMBOL, value: Lexer::COMMA) if current_token.value != Lexer::RBRACKET
+    end
+
+    expect(value: Lexer::RBRACKET)
+
+    arr
   end
 
   def parse_value
-    case current_token.type
+    val = case current_token.type
     when :INTEGER
       current_token.value.to_i
     when :FLOAT
@@ -50,15 +59,19 @@ class Parser
     when :BOOL
       parse_bool
     end
+
+    advance
+    val
   end
 
   def parse_string
     # the lexer preserves the surrounding quotes, but we need to get rid of them
-    unless current_token.length >= 2 && current_token.starts_with?('"') && current_token.ends_with?('"')
-      raise ParseError, "Encountered STRING token with invalid value: #{current_token.value.inspect}"
+    value = current_token.value
+    unless value.length >= 2 && value.start_with?('"') && value.end_with?('"')
+      raise ParseError, "Encountered STRING token with invalid value: #{value.inspect}"
     end
 
-    current_token[1..-2]
+    value[1..-2]
   end
 
   def parse_bool
@@ -80,12 +93,16 @@ class Parser
     tokens[position+1]
   end
 
-  def expect(value)
-    if current_token.value != value
-      advance
-    else
+  def expect(value: nil, type: nil)
+    if value && current_token.value != value
       raise ParseError, "Expected token value #{value} at position #{position}, got: #{current_token.value}"
     end
+
+    if type && current_token.type != type
+      raise ParseError, "Expected token type #{type} at position #{position}, got: #{current_token.type}"
+    end
+
+    advance
   end
 end
 
@@ -96,5 +113,56 @@ class ParserTest < Minitest::Test
     parser.instance_variable_set(:@current_token, Token.new(type: :INTEGER, value: "42"))
 
     assert_equal(parser.parse_value, 42)
+  end
+
+  def test_parse_with_integer
+    token = Token.new(type: :INTEGER, value: "1")
+    parser = Parser.new(tokens: [token])
+
+    assert_equal(1, parser.parse)
+  end
+
+  def test_parse_with_float
+    token = Token.new(type: :FLOAT, value: "3.14")
+    parser = Parser.new(tokens: [token])
+
+    assert_equal(3.14, parser.parse)
+  end
+
+  def test_parse_with_string
+    token = Token.new(type: :STRING, value: '"b"')
+    parser = Parser.new(tokens: [token])
+
+    assert_equal("b", parser.parse)
+  end
+
+  def test_parse_with_empty_array
+    tokens = [[:SYMBOL, "["], [:SYMBOL, "]"]].map do |(type, value)|
+      Token.new(type:, value:)
+    end
+
+    parser = Parser.new(tokens:)
+
+    assert_equal([], parser.parse)
+  end
+
+  def test_parse_with_single_value_array
+    tokens = [[:SYMBOL, "["], [:INTEGER, 1], [:SYMBOL, "]"]].map do |(type, value)|
+      Token.new(type:, value:)
+    end
+
+    parser = Parser.new(tokens:)
+
+    assert_equal([1], parser.parse)
+  end
+
+  def test_parse_with_heterogeneous_array
+    tokens = [[:SYMBOL, "["], [:INTEGER, "1"], [:SYMBOL, ","], [:STRING, "\"b\""], [:SYMBOL, ","], [:FLOAT, "3.14"], [:SYMBOL, "]"]].map do |(type, value)|
+      Token.new(type:, value:)
+    end
+
+    parser = Parser.new(tokens:)
+
+    assert_equal([1, "b", 3.14], parser.parse)
   end
 end
