@@ -28,7 +28,20 @@ class Parser
   def parse_object
     expect(value: Lexer::LBRACE)
 
-    # TODO: parse inner property/value pairs, then expect RBRACE
+    obj = {}
+
+    until current_token.nil? || current_token.value == Lexer::RBRACE
+      key = parse_string
+      advance
+      expect(type: :SYMBOL, value: Lexer::COLON)
+      val = parse
+      expect(type: :SYMBOL, value: Lexer::COMMA) if current_token.value != Lexer::RBRACE
+      obj[key] = val
+    end
+
+    expect(value: Lexer::RBRACE)
+
+    obj
   end
 
   def parse_array
@@ -164,5 +177,30 @@ class ParserTest < Minitest::Test
     parser = Parser.new(tokens:)
 
     assert_equal([1, "b", 3.14], parser.parse)
+  end
+
+  def test_parse_with_empty_object
+    tokens = [[:SYMBOL, "{"], [:SYMBOL, "}"]].map do |(type, value)|
+      Token.new(type:, value:)
+    end
+
+    parser = Parser.new(tokens:)
+
+    assert_equal({}, parser.parse)
+  end
+
+  def test_parse_with_simple_object
+    tokens = [
+      [:SYMBOL, "{"],
+      [:STRING, "\"first_name\""], [:SYMBOL, ":"], [:STRING, "\"Jacob\""], [:SYMBOL, ","],
+      [:STRING, "\"last_name\""], [:SYMBOL, ":"], [:STRING, "\"Barrieault\""],
+      [:SYMBOL, "}"]
+    ].map do |(type, value)|
+      Token.new(type:, value:)
+    end
+
+    parser = Parser.new(tokens:)
+
+    assert_equal({ "first_name" => "Jacob", "last_name" => "Barrieault" }, parser.parse)
   end
 end
