@@ -25,6 +25,8 @@ class Parser
     end
   end
 
+  private
+
   def parse_object
     expect(value: Lexer::LBRACE)
 
@@ -125,7 +127,7 @@ class ParserTest < Minitest::Test
 
     parser.instance_variable_set(:@current_token, Token.new(type: :INTEGER, value: "42"))
 
-    assert_equal(parser.parse_value, 42)
+    assert_equal(42, parser.send(:parse_value))
   end
 
   def test_parse_with_integer
