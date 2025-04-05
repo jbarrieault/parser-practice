@@ -17,6 +17,22 @@ class IntegerNode < Node
   end
 end
 
+class FloatNode < IntegerNode
+  def to_ruby
+    @value.to_f
+  end
+end
+
+class StringNode < Node
+  def initialize(value)
+    @value = value
+  end
+
+  def to_ruby
+    @value[1..-2]
+  end
+end
+
 class ASTParser
   def initialize(tokens:)
     @tokens = tokens
@@ -53,10 +69,23 @@ class ASTParser
     val = case current_token.type
     when :INTEGER
       IntegerNode.new(current_token.value)
+    when :FLOAT
+      FloatNode.new(current_token.value)
+    when :STRING
+      parse_string
     end
 
     advance
     val
+  end
+
+  def parse_string
+    value = current_token.value
+    unless value.length >= 2 && value.start_with?('"') && value.end_with?('"')
+      raise ParseError, "Encountered STRING token with invalid value: #{value.inspect}"
+    end
+
+    StringNode.new(value)
   end
 
   def advance
@@ -66,12 +95,33 @@ class ASTParser
 end
 
 class ASTParserTest < Minitest::Test
-  def test_parse_value
-    parser = ASTParser.new(tokens: [])
-    parser.instance_variable_set(:@current_token, Token.new(type: :INTEGER, value: "42"))
-    node = parser.send(:parse_value)
+  def test_parse_with_integer
+    tokens = [Token.new(type: :INTEGER, value: "42")]
+    parser = ASTParser.new(tokens:)
+    node = parser.parse
 
     assert_instance_of IntegerNode, node
     assert_equal(42, node.to_ruby)
+  end
+
+  def test_parse_with_float
+    tokens = [Token.new(type: :FLOAT, value: "3.14")]
+    parser = ASTParser.new(tokens:)
+    node = parser.parse
+
+    assert_instance_of FloatNode, node
+    assert_equal(3.14, node.to_ruby)
+  end
+
+  def test_parse_with_string
+    tokens = [Token.new(type: :STRING, value: '"According to all known laws of aviation, there is no way a bee should be able to fly."')]
+    parser = ASTParser.new(tokens:)
+    node = parser.parse
+
+    assert_instance_of StringNode, node
+    assert_equal(
+      "According to all known laws of aviation, there is no way a bee should be able to fly.",
+      node.to_ruby
+    )
   end
 end
