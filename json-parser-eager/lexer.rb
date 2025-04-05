@@ -191,7 +191,8 @@ class LexerTest < Minitest::Test
           "name": "jacob",
           "hobbies": ["programming", "pickleball"]
         },
-        "health": 6.5
+        "health": 6.5,
+        "weight_in_grams": 6.8e4
       }
     JSON
 
@@ -205,7 +206,8 @@ class LexerTest < Minitest::Test
       [:STRING, "\"name\""], [:SYMBOL, ":"], [:STRING, "\"jacob\""], [:SYMBOL, ","],
       [:STRING, "\"hobbies\""], [:SYMBOL, ":"], [:SYMBOL, "["], [:STRING, "\"programming\""], [:SYMBOL, ","], [:STRING, "\"pickleball\""], [:SYMBOL, "]"],
       [:SYMBOL, "}"], [:SYMBOL, ","],
-      [:STRING, "\"health\""], [:SYMBOL, ":"], [:FLOAT, "6.5"],
+      [:STRING, "\"health\""], [:SYMBOL, ":"], [:FLOAT, "6.5"], [:SYMBOL, ","],
+      [:STRING, "\"weight_in_grams\""], [:SYMBOL, ":"], [:FLOAT, "6.8e4"],
       [:SYMBOL, "}"]
     ],
       lexer.tokens.map(&:to_a)

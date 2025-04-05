@@ -142,6 +142,13 @@ class ParserTest < Minitest::Test
     assert_equal(3.14, parser.parse)
   end
 
+  def test_parse_with_scientific_float
+    token = Token.new(type: :FLOAT, value: "6.8e4")
+    parser = Parser.new(tokens: [token])
+
+    assert_equal(68000.0, parser.parse)
+  end
+
   def test_parse_with_string
     token = Token.new(type: :STRING, value: '"b"')
     parser = Parser.new(tokens: [token])
