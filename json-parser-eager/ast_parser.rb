@@ -43,7 +43,19 @@ class ArrayNode < Node
   end
 end
 
+class ObjectNode < Node
+  def initialize(pairs)
+    @pairs = pairs
+  end
+
+  def to_ruby
+    @pairs.map { |k, v| [k.to_ruby, v.to_ruby] }.to_h
+  end
+end
+
 class ASTParser
+  class ParseError < StandardError; end
+
   def initialize(tokens:)
     @tokens = tokens
     @position = 0
@@ -68,7 +80,23 @@ class ASTParser
   private
 
   def parse_object
+    expect(value: Lexer::LBRACE)
+    pairs = []
 
+    until current_token.nil? || current_token.value == Lexer::RBRACE
+      key = parse_string
+      advance
+
+      expect(type: :SYMBOL, value: Lexer::COLON)
+      val = parse
+      expect(type: :SYMBOL, value: Lexer::COMMA) if current_token.value != Lexer::RBRACE
+
+      pairs << [key, val]
+    end
+
+    expect(value: Lexer::RBRACE)
+
+    ObjectNode.new(pairs)
   end
 
   def parse_array
@@ -203,4 +231,32 @@ class ASTParserTest < Minitest::Test
     assert_equal([1, "b", 3.14], node.to_ruby)
   end
 
+  def test_parse_with_empty_object
+    tokens = [[:SYMBOL, "{"], [:SYMBOL, "}"]].map do |(type, value)|
+      Token.new(type:, value:)
+    end
+
+    parser = ASTParser.new(tokens:)
+    node = parser.parse
+
+    assert_instance_of(ObjectNode, node)
+    assert_equal({}, node.to_ruby)
+  end
+
+  def test_parse_with_simple_object
+    tokens = [
+      [:SYMBOL, "{"],
+      [:STRING, "\"first_name\""], [:SYMBOL, ":"], [:STRING, "\"Jacob\""], [:SYMBOL, ","],
+      [:STRING, "\"last_name\""], [:SYMBOL, ":"], [:STRING, "\"Barrieault\""],
+      [:SYMBOL, "}"]
+    ].map do |(type, value)|
+      Token.new(type:, value:)
+    end
+
+    parser = ASTParser.new(tokens:)
+    node = parser.parse
+
+    assert_instance_of(ObjectNode, node)
+    assert_equal({ "first_name" => "Jacob", "last_name" => "Barrieault" }, node.to_ruby)
+  end
 end
