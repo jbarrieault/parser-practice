@@ -1,5 +1,22 @@
 require "minitest/autorun"
 
+class Token
+  def initialize(type:, value:)
+    @type = type
+    @value = value
+  end
+
+  attr_reader :type, :value
+
+  def to_a
+    [type, value]
+  end
+
+  def to_s
+    @value
+  end
+end
+
 class Lexer
   SPACE = " "
   NEWLINE = "\n"
@@ -13,6 +30,23 @@ class Lexer
     TAB
   ]
 
+  # Token types
+  LBRACE = "{"
+  RBRACE = "}"
+  LBRACKET = "["
+  RBRACKET = "]"
+  COLON = ":"
+  COMMA = ","
+
+  SYMBOLS = [
+    LBRACE,
+    RBRACE,
+    LBRACKET,
+    RBRACKET,
+    COLON,
+    COMMA
+  ]
+
   def initialize(source)
     @buffer = []
     @source = source
@@ -20,8 +54,15 @@ class Lexer
 
   attr_reader :buffer, :source
 
+  # TODO: expose an enumerable method such as #each_token
+
   def next_token
     eat_whitespace
+
+    char = getc
+    return if char.nil?
+
+    return Token.new(type: :SYMBOL, value: char) if SYMBOLS.include? char
   end
 
   def eat_whitespace
@@ -49,5 +90,12 @@ class LexerTest < Minitest::Test
     lexer.send(:eat_whitespace)
 
     assert_equal("a", lexer.getc)
+  end
+
+  def test_symbol_token
+    source = StringIO.new("{")
+    lexer = Lexer.new(source)
+
+    assert_equal([:SYMBOL, "{"], lexer.next_token.to_a)
   end
 end
