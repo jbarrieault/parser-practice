@@ -3,16 +3,28 @@ require "minitest/autorun"
 require_relative "lexer"
 
 class Emitter
+  def initialize(observers: [])
+    @observers = observers
+  end
+
+  attr_reader :observers
+
+  def emit(event)
+    observers.each do |observer|
+      observer.handle(event)
+    end
+  end
+end
+
+class MemoryObserver
   def initialize
     @events = []
   end
 
-  def emit(event)
-    @events << event
-  end
+  attr_reader :events
 
-  def last_event
-    @events.last
+  def handle(event)
+    events << event
   end
 end
 
@@ -31,10 +43,10 @@ class Parser
   INTEGER_EVENT = "event:integer"
   FLOAT_EVENT = "event:float"
 
-  def initialize(lexer:)
+  def initialize(lexer:, emitter:)
     @lexer = lexer
+    @emitter = emitter
     @current_token = nil
-    @emitter = Emitter.new
   end
 
   attr_reader :lexer, :current_token, :emitter
@@ -62,8 +74,8 @@ class Parser
     @current_token = lexer.next_token
   end
 
-  def emit(node)
-    emitter.emit(node)
+  def emit(event)
+    emitter.emit(event)
   end
 end
 
@@ -71,11 +83,14 @@ class ParserTest < Minitest::Test
   def test_parse_with_integer
     source = StringIO.new("42")
     lexer = Lexer.new(source)
-    parser = Parser.new(lexer:)
+    observer = MemoryObserver.new
+    emitter = Emitter.new(observers: [observer])
+    parser = Parser.new(lexer:, emitter:)
 
     parser.parse
-    event = parser.emitter.last_event
+    event = observer.events.last
 
+    assert_equal(1, observer.events.size)
     assert_equal([Parser::INTEGER_EVENT, 42], event.to_a)
   end
 end
