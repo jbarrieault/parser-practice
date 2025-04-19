@@ -2,35 +2,42 @@ require 'pry'
 require "minitest/autorun"
 require_relative "lexer"
 
-class Node
-  def to_ruby
-    raise "Node subclass must implement to_ruby"
+class Emitter
+  def initialize
+    @events = []
+  end
+
+  def emit(event)
+    @events << event
+  end
+
+  def last_event
+    @events.last
   end
 end
 
-class IntegerNode < Node
-  def initialize(value)
+class Event
+  def initialize(type:, value:)
+    @type = type
     @value = value
   end
 
-  def to_ruby
-    @value.to_i
-  end
-end
-
-class FloatNode < IntegerNode
-  def to_ruby
-    @value.to_f
+  def to_a
+    [@type, @value]
   end
 end
 
 class Parser
+  INTEGER_EVENT = "event:integer"
+  FLOAT_EVENT = "event:float"
+
   def initialize(lexer:)
     @lexer = lexer
     @current_token = nil
+    @emitter = Emitter.new
   end
 
-  attr_reader :lexer, :current_token
+  attr_reader :lexer, :current_token, :emitter
 
   def parse
     return if advance.nil?
@@ -41,9 +48,11 @@ class Parser
   def parse_value
     case current_token.type
     when :INTEGER
-      emit(IntegerNode.new(current_token.value))
+      value = current_token.value.to_i
+      emit(Event.new(type: INTEGER_EVENT, value:))
     when :FLOAT
-      emit(FloatNode.new(current_token.value))
+      value = current_token.value.to_f
+      emit(Event.new(type: FLOAT_EVENT, value:))
     when :STRING
       # parse_string
     end
@@ -54,8 +63,7 @@ class Parser
   end
 
   def emit(node)
-    # TODO
-    @last_emit = node
+    emitter.emit(node)
   end
 end
 
@@ -66,9 +74,8 @@ class ParserTest < Minitest::Test
     parser = Parser.new(lexer:)
 
     parser.parse
-    node = parser.instance_variable_get(:@last_emit)
+    event = parser.emitter.last_event
 
-    assert_instance_of IntegerNode, node
-    assert_equal(42, node.to_ruby)
+    assert_equal([Parser::INTEGER_EVENT, 42], event.to_a)
   end
 end
