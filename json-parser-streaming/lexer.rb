@@ -74,7 +74,7 @@ class Lexer
     char = peek
     return if char.nil?
 
-    return Token.new(type: :SYMBOL, value: char) if SYMBOLS.include? char
+    return Token.new(type: :SYMBOL, value: getc) if SYMBOLS.include? char
 
     if char == DOUBLE_QUOTE
       consume_string_literal_token
@@ -197,5 +197,41 @@ class LexerTest < Minitest::Test
     lexer = Lexer.new(source)
 
     assert_equal([:FLOAT, "3.14"], lexer.next_token.to_a)
+  end
+
+  def test_lexer_basic
+    source = StringIO.new(<<~JSON
+       {
+        "id": 123,
+        "details": {
+          "name": "jacob",
+          "hobbies": ["programming", "pickleball"]
+        },
+        "health": 6.5,
+        "weight_in_grams": 6.8e4
+      }
+    JSON
+    )
+
+    lexer = Lexer.new(source)
+
+    tokens = []
+    until (token = lexer.next_token) == nil
+      tokens << token
+    end
+
+    assert_equal([
+      [:SYMBOL, "{"],
+      [:STRING, "\"id\""], [:SYMBOL, ":"], [:INTEGER, "123"], [:SYMBOL, ","],
+      [:STRING, "\"details\""], [:SYMBOL, ":"], [:SYMBOL, "{"],
+      [:STRING, "\"name\""], [:SYMBOL, ":"], [:STRING, "\"jacob\""], [:SYMBOL, ","],
+      [:STRING, "\"hobbies\""], [:SYMBOL, ":"], [:SYMBOL, "["], [:STRING, "\"programming\""], [:SYMBOL, ","], [:STRING, "\"pickleball\""], [:SYMBOL, "]"],
+      [:SYMBOL, "}"], [:SYMBOL, ","],
+      [:STRING, "\"health\""], [:SYMBOL, ":"], [:FLOAT, "6.5"], [:SYMBOL, ","],
+      [:STRING, "\"weight_in_grams\""], [:SYMBOL, ":"], [:FLOAT, "6.8e4"],
+      [:SYMBOL, "}"]
+    ],
+      tokens.map(&:to_a)
+    )
   end
 end
