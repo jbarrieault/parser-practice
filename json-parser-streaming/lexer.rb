@@ -52,6 +52,7 @@ class Lexer
   ]
 
   DOUBLE_QUOTE = "\""
+  BACKSLASH = "\\"
 
   NULL = "null"
   TRUE = "true"
@@ -98,7 +99,9 @@ class Lexer
 
     until (char = getc) == DOUBLE_QUOTE
       raise Wat, "unclosed string literal '#{value}'" if char.nil?
+
       value << char
+      value << getc if char == BACKSLASH && peek == DOUBLE_QUOTE
     end
 
     value << DOUBLE_QUOTE
@@ -170,12 +173,12 @@ class LexerTest < Minitest::Test
     assert_equal([:STRING, "\"hello\""], lexer.next_token.to_a)
   end
 
-  # def test_string_literal_token_with_escaped_double_quote
-  #   source = StringIO.new('"\"hello\""')
-  #   lexer = Lexer.new(source)
+  def test_string_literal_token_with_escaped_double_quote
+    source = StringIO.new('"\"hello\""')
+    lexer = Lexer.new(source)
 
-  #   assert_equal([:STRING, '"\"hello\""'], lexer.next_token.to_a)
-  # end
+    assert_equal([:STRING, '"\"hello\""'], lexer.next_token.to_a)
+  end
 
   def test_bool_token
     source = StringIO.new("true")
