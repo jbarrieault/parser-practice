@@ -107,6 +107,8 @@ class Lexer
 
     if [TRUE, FALSE].include?(value)
       return Token.new(type: :BOOL, value:)
+    elsif value == NULL
+      return Token.new(type: :NULL, value:)
     end
   end
 
@@ -163,5 +165,12 @@ class LexerTest < Minitest::Test
     lexer = Lexer.new(source)
 
     assert_equal([:BOOL, "true"], lexer.next_token.to_a)
+  end
+
+  def test_null_token
+    source = StringIO.new("null")
+    lexer = Lexer.new(source)
+
+    assert_equal([:NULL, "null"], lexer.next_token.to_a)
   end
 end
