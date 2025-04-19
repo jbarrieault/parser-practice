@@ -20,6 +20,8 @@ end
 class Lexer
   class Wat < StandardError; end
 
+  JSON_NUMERIC = /\A-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
+
   SPACE = " "
   NEWLINE = "\n"
   CARRIAGE_RETURN = "\r"
@@ -109,6 +111,15 @@ class Lexer
       return Token.new(type: :BOOL, value:)
     elsif value == NULL
       return Token.new(type: :NULL, value:)
+    else
+      int, float = value.match(JSON_NUMERIC).deconstruct
+      if float
+        return Token.new(type: :FLOAT, value:)
+      elsif int
+        return Token.new(type: :INTEGER, value:)
+      else
+        raise Wat, "Unhandled token type for value: #{value}"
+      end
     end
   end
 
@@ -172,5 +183,19 @@ class LexerTest < Minitest::Test
     lexer = Lexer.new(source)
 
     assert_equal([:NULL, "null"], lexer.next_token.to_a)
+  end
+
+  def test_int_token
+    source = StringIO.new("42")
+    lexer = Lexer.new(source)
+
+    assert_equal([:INTEGER, "42"], lexer.next_token.to_a)
+  end
+
+  def test_int_token
+    source = StringIO.new("3.14")
+    lexer = Lexer.new(source)
+
+    assert_equal([:FLOAT, "3.14"], lexer.next_token.to_a)
   end
 end
