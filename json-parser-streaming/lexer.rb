@@ -66,7 +66,11 @@ class Lexer
 
   attr_reader :buffer, :source
 
-  # TODO: expose an enumerable method such as #each_token
+  def each_token
+    until (token = next_token) == nil
+      yield token
+    end
+  end
 
   def next_token
     eat_whitespace
@@ -82,6 +86,8 @@ class Lexer
       consume_value_token
     end
   end
+
+  private
 
   def consume_string_literal_token
     if getc != DOUBLE_QUOTE
@@ -147,7 +153,7 @@ class LexerTest < Minitest::Test
     lexer = Lexer.new(source)
     lexer.send(:eat_whitespace)
 
-    assert_equal("a", lexer.getc)
+    assert_equal("a", lexer.send(:getc))
   end
 
   def test_symbol_token
@@ -217,6 +223,42 @@ class LexerTest < Minitest::Test
 
     tokens = []
     until (token = lexer.next_token) == nil
+      tokens << token
+    end
+
+    assert_equal([
+      [:SYMBOL, "{"],
+      [:STRING, "\"id\""], [:SYMBOL, ":"], [:INTEGER, "123"], [:SYMBOL, ","],
+      [:STRING, "\"details\""], [:SYMBOL, ":"], [:SYMBOL, "{"],
+      [:STRING, "\"name\""], [:SYMBOL, ":"], [:STRING, "\"jacob\""], [:SYMBOL, ","],
+      [:STRING, "\"hobbies\""], [:SYMBOL, ":"], [:SYMBOL, "["], [:STRING, "\"programming\""], [:SYMBOL, ","], [:STRING, "\"pickleball\""], [:SYMBOL, "]"],
+      [:SYMBOL, "}"], [:SYMBOL, ","],
+      [:STRING, "\"health\""], [:SYMBOL, ":"], [:FLOAT, "6.5"], [:SYMBOL, ","],
+      [:STRING, "\"weight_in_grams\""], [:SYMBOL, ":"], [:FLOAT, "6.8e4"],
+      [:SYMBOL, "}"]
+    ],
+      tokens.map(&:to_a)
+    )
+  end
+
+  def test_each_token
+    source = StringIO.new(<<~JSON
+      {
+      "id": 123,
+      "details": {
+        "name": "jacob",
+        "hobbies": ["programming", "pickleball"]
+      },
+      "health": 6.5,
+      "weight_in_grams": 6.8e4
+    }
+    JSON
+    )
+
+    lexer = Lexer.new(source)
+
+    tokens = []
+    lexer.each_token do |token|
       tokens << token
     end
 
