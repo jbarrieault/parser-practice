@@ -74,20 +74,18 @@ class Parser
   def parse_next
     advance
 
-    if current_token.nil?
-      # error if: @stack isn't empty (something is un-closed)
+    case current_token&.value
+    when nil
+      # An array or object is un-closed)
       raise ParseError, "unexpected end of input: stack not empty" if stack.size > 0
-      return
-    end
-
-    if current_token.value == Lexer::LBRACKET
+    when Lexer::LBRACKET
       parse_array_start
-    elsif current_token.value == Lexer::RBRACKET
+    when Lexer::RBRACKET
       parse_array_end
-    elsif current_token.value == Lexer::COMMA
-      # an event is not emitted for commas, so parse_next is called again
-      # in order to preserve the behavior of 1 public call to #next_token emitting an event.
+    when Lexer::COMMA
       parse_comma
+      # an event is not emitted for commas, so parse_next again
+      # in order to preserve the behavior of 1 public call to #next_token emitting an event.
       parse_next
     else
       parse_value
