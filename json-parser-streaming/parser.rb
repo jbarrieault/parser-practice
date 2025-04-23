@@ -53,10 +53,9 @@ class Parser
     @emitter = emitter
     @current_token = nil
     @stack = []
-    @expecting = :value
   end
 
-  attr_reader :lexer, :current_token, :emitter, :stack, :expecting
+  attr_reader :lexer, :current_token, :emitter, :stack
 
   def parse
     return if advance.nil?
@@ -82,17 +81,24 @@ class Parser
     end
 
     if current_token.value == Lexer::LBRACKET
-
       parse_array_start
+    elsif current_token.value == Lexer::RBRACKET
+      parse_array_end
+    else
+      parse_value
     end
   end
 
   def parse_array_start
-    expect!(:value)
-    stack.push(:array)
-    expecting = :value # :value_or_bracket
-
+    must_expect!(:value)
+    stack.push({ type: :array, expecting: [:value, :array_end] })
     emit(Event.new(type: ARRAY_START_EVENT, value: current_token.value))
+  end
+
+  def parse_array_end
+    must_expect!(:array_end)
+    stack.pop
+    emit(Event.new(type: ARRAY_END_EVENT, value: current_token.value))
   end
 
   def parse_value
@@ -117,9 +123,13 @@ class Parser
     emitter.emit(event)
   end
 
-  def expect!(type_being_parsed)
-    if type_being_parsed != expecting
-      raise ParseError, "Expecting to parse a #{expecting}, but parsing a #{type_being_parsed}"
+  # validate that `type` is one of we're currently `expecting`
+  def must_expect!(type)
+    expecting = stack.last&.[](:expecting)
+    return if expecting.nil?
+
+    unless expecting.include?(type)
+      raise ParseError, "Unexpected #{type} '#{current_token.value}', expecting any of: #{expecting.join(', ')}"
     end
   end
 end
@@ -154,21 +164,25 @@ class ParserTest < Minitest::Test
   end
 
   def test_parse_next_array_start
-    source = StringIO.new("[")
+    source = StringIO.new("[[1]]")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
     parser.parse_next
-    event = observer.events.last
+    assert_equal([Parser::ARRAY_START_EVENT, "["], observer.events.last.to_a)
 
-    # test what was emitted
-    assert_equal(1, observer.events.size)
-    assert_equal([Parser::ARRAY_START_EVENT, "["], event.to_a)
+    parser.parse_next
+    assert_equal([Parser::ARRAY_START_EVENT, "["], observer.events.last.to_a)
 
-    # test state transition
-    assert_equal([:array], parser.stack)
-    assert_equal(:value, parser.expecting)
+    parser.parse_next
+    assert_equal([Parser::INTEGER_EVENT, 1], observer.events.last.to_a)
+
+    parser.parse_next
+    assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
+
+    parser.parse_next
+    assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
   end
 end
