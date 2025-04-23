@@ -84,6 +84,11 @@ class Parser
       parse_array_start
     elsif current_token.value == Lexer::RBRACKET
       parse_array_end
+    elsif current_token.value == Lexer::COMMA
+      # an event is not emitted for commas, so parse_next is called again
+      # in order to preserve the behavior of 1 public call to #next_token emitting an event.
+      parse_comma
+      parse_next
     else
       parse_value
     end
@@ -102,6 +107,8 @@ class Parser
   end
 
   def parse_value
+    must_expect!(:value)
+
     case current_token.type
     when :INTEGER
       value = current_token.value.to_i
@@ -113,6 +120,23 @@ class Parser
       value = current_token.value[1..-2]
       emit(Event.new(type: STRING_EVENT, value:))
     end
+
+    state[:expecting] = [:comma, :array_end] if state[:type] == :array
+    # state[:expecting] = [:comma, :end_object] if state[:type] == :object
+  end
+
+  def parse_comma
+    must_expect!(:comma)
+
+    if state[:type] == :array
+      state[:expecting] = [:value]
+    # elsif state[:type] == :object
+    #   state[:expecting] = [:key, :value]
+    end
+  end
+
+  def state
+    stack.last || {}
   end
 
   def advance
@@ -125,7 +149,7 @@ class Parser
 
   # validate that `type` is one of we're currently `expecting`
   def must_expect!(type)
-    expecting = stack.last&.[](:expecting)
+    expecting = state[:expecting]
     return if expecting.nil?
 
     unless expecting.include?(type)
@@ -164,7 +188,7 @@ class ParserTest < Minitest::Test
   end
 
   def test_parse_next_array_start
-    source = StringIO.new("[[1]]")
+    source = StringIO.new("[[1,2]]")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
@@ -178,6 +202,9 @@ class ParserTest < Minitest::Test
 
     parser.parse_next
     assert_equal([Parser::INTEGER_EVENT, 1], observer.events.last.to_a)
+
+    parser.parse_next
+    assert_equal([Parser::INTEGER_EVENT, 2], observer.events.last.to_a)
 
     parser.parse_next
     assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
