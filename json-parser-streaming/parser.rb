@@ -45,6 +45,8 @@ class Parser
   INTEGER_EVENT = "event:integer"
   FLOAT_EVENT = "event:float"
   STRING_EVENT = "event:string"
+  NULL_EVENT = "event:null"
+  BOOL_EVENT = "event:bool"
   ARRAY_START_EVENT = "event:array_start"
   ARRAY_END_EVENT = "event:array_end"
 
@@ -117,6 +119,11 @@ class Parser
     when :STRING
       value = current_token.value[1..-2]
       emit(Event.new(type: STRING_EVENT, value:))
+    when :NULL
+      emit(Event.new(type: NULL_EVENT, value: nil))
+    when :BOOL
+      value = current_token.value == "true"
+      emit(Event.new(type: BOOL_EVENT, value:))
     end
 
     state[:expecting] = [:comma, :array_end] if state[:type] == :array
@@ -157,32 +164,64 @@ class Parser
 end
 
 class ParserTest < Minitest::Test
-  def test_parse_with_integer
+  def test_parse_value_with_integer
     source = StringIO.new("42")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.parse
+    parser.advance
+    parser.parse_value
     event = observer.events.last
 
     assert_equal(1, observer.events.size)
     assert_equal([Parser::INTEGER_EVENT, 42], event.to_a)
   end
 
-  def test_parse_with_string
+  def test_parse_value_with_string
     source = StringIO.new("\"Hello\"")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.parse
+    parser.advance
+    parser.parse_value
     event = observer.events.last
 
     assert_equal(1, observer.events.size)
     assert_equal([Parser::STRING_EVENT, "Hello"], event.to_a)
+  end
+
+  def test_parse_value_with_null
+    source = StringIO.new("null")
+    lexer = Lexer.new(source)
+    observer = MemoryObserver.new
+    emitter = Emitter.new(observers: [observer])
+    parser = Parser.new(lexer:, emitter:)
+
+    parser.advance
+    parser.parse_value
+    event = observer.events.last
+
+    assert_equal(1, observer.events.size)
+    assert_equal([Parser::NULL_EVENT, nil], event.to_a)
+  end
+
+  def test_parse_value_with_bool
+    source = StringIO.new("true")
+    lexer = Lexer.new(source)
+    observer = MemoryObserver.new
+    emitter = Emitter.new(observers: [observer])
+    parser = Parser.new(lexer:, emitter:)
+
+    parser.advance
+    parser.parse_value
+    event = observer.events.last
+
+    assert_equal(1, observer.events.size)
+    assert_equal([Parser::BOOL_EVENT, true], event.to_a)
   end
 
   def test_parse_next_array_start
