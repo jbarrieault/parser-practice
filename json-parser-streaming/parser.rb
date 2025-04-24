@@ -49,6 +49,8 @@ class Parser
   BOOL_EVENT = "event:bool"
   ARRAY_START_EVENT = "event:array_start"
   ARRAY_END_EVENT = "event:array_end"
+  OBJECT_START_EVENT = "event:object_start"
+  OBJECT_END_EVENT = "event:object_end"
 
   def initialize(lexer:, emitter:)
     @lexer = lexer
@@ -84,6 +86,10 @@ class Parser
       parse_array_start
     when Lexer::RBRACKET
       parse_array_end
+    when Lexer::LBRACE
+      parse_object_start
+    when Lexer::RBRACE
+      parse_object_end
     when Lexer::COMMA
       parse_comma
       # an event is not emitted for commas, so parse_next again
@@ -104,6 +110,18 @@ class Parser
     must_expect!(:array_end)
     stack.pop
     emit(Event.new(type: ARRAY_END_EVENT, value: current_token.value))
+  end
+
+  def parse_object_start
+    must_expect!(:value)
+    stack.push({ type: :object, expecting: [:key, :object_end] })
+    emit(Event.new(type: OBJECT_START_EVENT, value: current_token.value))
+  end
+
+  def parse_object_end
+    must_expect!(:object_end)
+    stack.pop
+    emit(Event.new(type: OBJECT_END_EVENT, value: current_token.value))
   end
 
   def parse_value
@@ -224,7 +242,7 @@ class ParserTest < Minitest::Test
     assert_equal([Parser::BOOL_EVENT, true], event.to_a)
   end
 
-  def test_parse_next_array_start
+  def test_parse_next_array
     source = StringIO.new("[[1,2]]")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
@@ -248,5 +266,19 @@ class ParserTest < Minitest::Test
 
     parser.parse_next
     assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
+  end
+
+  def test_parse_next_object
+    source = StringIO.new("{}")
+    lexer = Lexer.new(source)
+    observer = MemoryObserver.new
+    emitter = Emitter.new(observers: [observer])
+    parser = Parser.new(lexer:, emitter:)
+
+    parser.parse_next
+    assert_equal([Parser::OBJECT_START_EVENT, "{"], observer.events.last.to_a)
+
+    parser.parse_next
+    assert_equal([Parser::OBJECT_END_EVENT, "}"], observer.events.last.to_a)
   end
 end
