@@ -111,10 +111,7 @@ class Parser
   def parse_array_end
     must_expect!(:array_end)
     stack.pop
-
-    # this represents the end of a value a parent array or object was expecting
-    state[:expecting] = [:comma, :object_end] if state[:type] == :object
-    state[:expecting] = [:comma, :array_end] if state[:type] == :array
+    update_state_expecting_to_comma_or_end
 
     emit(Event.new(type: ARRAY_END_EVENT, value: current_token.value))
   end
@@ -128,10 +125,7 @@ class Parser
   def parse_object_end
     must_expect!(:object_end)
     stack.pop
-
-    # this represents the end of a value a parent array or object was expecting
-    state[:expecting] = [:comma, :object_end] if state[:type] == :object
-    state[:expecting] = [:comma, :array_end] if state[:type] == :array
+    update_state_expecting_to_comma_or_end
 
     emit(Event.new(type: OBJECT_END_EVENT, value: current_token.value))
   end
@@ -146,13 +140,8 @@ class Parser
 
   def parse_string_value
     must_expect!(:value)
-
-    value = current_token.value[1..-2]
-
-    state[:expecting] = [:comma, :array_end] if state[:type] == :array
-    state[:expecting] = [:comma, :object_end] if state[:type] == :object
-
-    emit(Event.new(type: STRING_EVENT, value:))
+    update_state_expecting_to_comma_or_end
+    emit(Event.new(type: STRING_EVENT, value: current_token.value[1..-2]))
   end
 
   def parse_key
@@ -191,10 +180,14 @@ class Parser
       Event.new(type: BOOL_EVENT, value:)
     end
 
-    state[:expecting] = [:comma, :array_end] if state[:type] == :array
-    state[:expecting] = [:comma, :object_end] if state[:type] == :object
+    update_state_expecting_to_comma_or_end
 
     emit(event)
+  end
+
+  def update_state_expecting_to_comma_or_end
+    state[:expecting] = [:comma, :array_end] if state[:type] == :array
+    state[:expecting] = [:comma, :object_end] if state[:type] == :object
   end
 
   def parse_comma
