@@ -105,7 +105,7 @@ class Parser
   def parse_array_start
     must_expect!(:value)
     stack.push({ type: :array, expecting: [:value, :array_end] })
-    emit(Event.new(type: ARRAY_START_EVENT, value: current_token.value))
+    emit(type: ARRAY_START_EVENT, value: current_token.value)
   end
 
   def parse_array_end
@@ -113,13 +113,13 @@ class Parser
     stack.pop
     update_state_expecting_to_comma_or_end
 
-    emit(Event.new(type: ARRAY_END_EVENT, value: current_token.value))
+    emit(type: ARRAY_END_EVENT, value: current_token.value)
   end
 
   def parse_object_start
     must_expect!(:value)
     stack.push({ type: :object, expecting: [:key, :object_end] })
-    emit(Event.new(type: OBJECT_START_EVENT, value: current_token.value))
+    emit(type: OBJECT_START_EVENT, value: current_token.value)
   end
 
   def parse_object_end
@@ -127,7 +127,7 @@ class Parser
     stack.pop
     update_state_expecting_to_comma_or_end
 
-    emit(Event.new(type: OBJECT_END_EVENT, value: current_token.value))
+    emit(type: OBJECT_END_EVENT, value: current_token.value)
   end
 
   def parse_string
@@ -141,7 +141,7 @@ class Parser
   def parse_string_value
     must_expect!(:value)
     update_state_expecting_to_comma_or_end
-    emit(Event.new(type: STRING_EVENT, value: current_token.value[1..-2]))
+    emit(type: STRING_EVENT, value: current_token.value[1..-2])
   end
 
   def parse_key
@@ -160,7 +160,7 @@ class Parser
 
     state[:expecting] = [:value]
 
-    emit(Event.new(type: OBJECT_KEY_EVENT, value:))
+    emit(type: OBJECT_KEY_EVENT, value:)
   end
 
   def parse_value
@@ -168,21 +168,18 @@ class Parser
 
     event = case current_token.type
     when :INTEGER
-      value = current_token.value.to_i
-      Event.new(type: INTEGER_EVENT, value:)
+      { type: INTEGER_EVENT, value: current_token.value.to_i }
     when :FLOAT
-      value = current_token.value.to_f
-      Event.new(type: FLOAT_EVENT, value:)
+      { type: FLOAT_EVENT, value: current_token.value.to_f }
     when :NULL
-      Event.new(type: NULL_EVENT, value: nil)
+      { type: NULL_EVENT, value: nil }
     when :BOOL
-      value = current_token.value == "true"
-      Event.new(type: BOOL_EVENT, value:)
+      { type: BOOL_EVENT, value: current_token.value == "true" }
     end
 
     update_state_expecting_to_comma_or_end
 
-    emit(event)
+    emit(**event)
   end
 
   def update_state_expecting_to_comma_or_end
@@ -208,8 +205,8 @@ class Parser
     @current_token = lexer.next_token
   end
 
-  def emit(event)
-    emitter.emit(event)
+  def emit(type:, value:)
+    emitter.emit(Event.new(type:, value:))
   end
 
   # validate that `type` is one of we're currently `expecting`
