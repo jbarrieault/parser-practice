@@ -57,7 +57,7 @@ class Parser
     @lexer = lexer
     @emitter = emitter
     @current_token = nil
-    @stack = []
+    @stack = [{ type: :top, expecting: [:value] }]
   end
 
   attr_reader :lexer, :current_token, :emitter, :stack
@@ -76,7 +76,7 @@ class Parser
     case current_token&.value
     when nil
       # An array or object is un-closed)
-      raise ParseError, "unexpected end of input: stack not empty" if stack.size > 0
+      raise ParseError, "unexpected end of input: stack not empty" if stack[:type] != :top
       return nil
     when Lexer::LBRACKET
       parse_array_start
@@ -187,6 +187,7 @@ class Parser
   def update_state_expecting_to_comma_or_end
     state[:expecting] = [:comma, :array_end] if state[:type] == :array
     state[:expecting] = [:comma, :object_end] if state[:type] == :object
+    state[:expecting] = [:eof] if state[:type] == :top
   end
 
   def parse_comma
@@ -200,7 +201,7 @@ class Parser
   end
 
   def state
-    stack.last || {}
+    stack.last
   end
 
   def advance
@@ -214,7 +215,6 @@ class Parser
   # validate that `type` is one of we're currently `expecting`
   def must_expect!(type)
     expecting = state[:expecting]
-    return if expecting.nil?
 
     unless expecting.include?(type)
       raise ParseError, "Unexpected token '#{current_token.value}' (type #{type}), expecting any of: #{expecting.join(', ')}"
@@ -392,5 +392,19 @@ class ParserTest < Minitest::Test
 
     parser.parse_next
     assert_equal([Parser::OBJECT_END_EVENT, "}"], observer.events.last.to_a)
+  end
+
+  def test_only_one_top_level_value
+    source = StringIO.new("[1],2")
+    lexer = Lexer.new(source)
+    observer = MemoryObserver.new
+    emitter = Emitter.new(observers: [observer])
+    parser = Parser.new(lexer:, emitter:)
+
+    err = assert_raises(Parser::ParseError) do
+      parser.parse
+    end
+
+    assert_match "Unexpected token ',' (type comma), expecting any of: eof", err.message
   end
 end
