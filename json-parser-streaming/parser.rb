@@ -175,6 +175,8 @@ class Parser
       { type: NULL_EVENT, value: nil }
     when :BOOL
       { type: BOOL_EVENT, value: current_token.value == "true" }
+    else
+      raise ParseError, "Unexpected token '#{current_token.value}' (type #{current_token.type}), expecting a value."
     end
 
     update_state_expecting_to_comma_or_end
