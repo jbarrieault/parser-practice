@@ -223,93 +223,78 @@ class Parser
 end
 
 class ParserTest < Minitest::Test
-  def test_parse_value_with_integer
+  def test_parse_integer
     source = StringIO.new("42")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.advance
-    parser.parse_value
-    event = observer.events.last
+    parser.parse
 
     assert_equal(1, observer.events.size)
-    assert_equal([Parser::INTEGER_EVENT, 42], event.to_a)
+    assert_equal([Parser::INTEGER_EVENT, 42], observer.events.last.to_a)
   end
 
-  def test_parse_string_value
+  def test_parse_string
     source = StringIO.new("\"Hello\"")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.advance
-    parser.parse_string_value
-    event = observer.events.last
+    parser.parse
 
     assert_equal(1, observer.events.size)
-    assert_equal([Parser::STRING_EVENT, "Hello"], event.to_a)
+    assert_equal([Parser::STRING_EVENT, "Hello"], observer.events.last.to_a)
   end
 
-  def test_parse_value_with_null
+  def test_parse_null
     source = StringIO.new("null")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.advance
-    parser.parse_value
-    event = observer.events.last
+    parser.parse
 
     assert_equal(1, observer.events.size)
-    assert_equal([Parser::NULL_EVENT, nil], event.to_a)
+    assert_equal([Parser::NULL_EVENT, nil], observer.events.last.to_a)
   end
 
-  def test_parse_value_with_bool
+  def test_parse_bool
     source = StringIO.new("true")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.advance
-    parser.parse_value
-    event = observer.events.last
+    parser.parse
 
     assert_equal(1, observer.events.size)
-    assert_equal([Parser::BOOL_EVENT, true], event.to_a)
+    assert_equal([Parser::BOOL_EVENT, true], observer.events.last.to_a)
   end
 
-  def test_parse_next_array
+  def test_parse_nested_array
     source = StringIO.new("[[1,2]]")
     lexer = Lexer.new(source)
     observer = MemoryObserver.new
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.parse_next
-    assert_equal([Parser::ARRAY_START_EVENT, "["], observer.events.last.to_a)
+    parser.parse
 
-    parser.parse_next
-    assert_equal([Parser::ARRAY_START_EVENT, "["], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::INTEGER_EVENT, 1], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::INTEGER_EVENT, 2], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
+    assert_equal([
+      [Parser::ARRAY_START_EVENT, "["],
+      [Parser::ARRAY_START_EVENT, "["],
+      [Parser::INTEGER_EVENT, 1],
+      [Parser::INTEGER_EVENT, 2],
+      [Parser::ARRAY_END_EVENT, "]"],
+      [Parser::ARRAY_END_EVENT, "]"]
+    ], observer.events.map(&:to_a))
   end
 
-  def test_parse_next_object
+  def test_parse_object
     source = StringIO.new(
       <<~JSON
         {
@@ -327,71 +312,35 @@ class ParserTest < Minitest::Test
     emitter = Emitter.new(observers: [observer])
     parser = Parser.new(lexer:, emitter:)
 
-    parser.parse_next
-    assert_equal([Parser::OBJECT_START_EVENT, "{"], observer.events.last.to_a)
+    parser.parse
 
-    parser.parse_next
-    assert_equal([Parser::OBJECT_KEY_EVENT, "hello"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::STRING_EVENT, "world"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::OBJECT_KEY_EVENT, "hobbies"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::ARRAY_START_EVENT, "["], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::STRING_EVENT, "programming"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::STRING_EVENT, "pickleball"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::STRING_EVENT, "bicycling"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::STRING_EVENT, "music"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::OBJECT_KEY_EVENT, "detail"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::OBJECT_START_EVENT, "{"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::OBJECT_KEY_EVENT, "ts"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::INTEGER_EVENT, 123456], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::OBJECT_KEY_EVENT, "args"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::ARRAY_START_EVENT, "["], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::INTEGER_EVENT, 1], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::STRING_EVENT, "16"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::BOOL_EVENT, true], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::ARRAY_END_EVENT, "]"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::OBJECT_END_EVENT, "}"], observer.events.last.to_a)
-
-    parser.parse_next
-    assert_equal([Parser::OBJECT_END_EVENT, "}"], observer.events.last.to_a)
+    assert_equal(
+      [
+        [Parser::OBJECT_START_EVENT, "{"],
+        [Parser::OBJECT_KEY_EVENT, "hello"],
+        [Parser::STRING_EVENT, "world"],
+        [Parser::OBJECT_KEY_EVENT, "hobbies"],
+        [Parser::ARRAY_START_EVENT, "["],
+        [Parser::STRING_EVENT, "programming"],
+        [Parser::STRING_EVENT, "pickleball"],
+        [Parser::STRING_EVENT, "bicycling"],
+        [Parser::STRING_EVENT, "music"],
+        [Parser::ARRAY_END_EVENT, "]"],
+        [Parser::OBJECT_KEY_EVENT, "detail"],
+        [Parser::OBJECT_START_EVENT, "{"],
+        [Parser::OBJECT_KEY_EVENT, "ts"],
+        [Parser::INTEGER_EVENT, 123456],
+        [Parser::OBJECT_KEY_EVENT, "args"],
+        [Parser::ARRAY_START_EVENT, "["],
+        [Parser::INTEGER_EVENT, 1],
+        [Parser::STRING_EVENT, "16"],
+        [Parser::BOOL_EVENT, true],
+        [Parser::ARRAY_END_EVENT, "]"],
+        [Parser::OBJECT_END_EVENT, "}"],
+        [Parser::OBJECT_END_EVENT, "}"]
+      ],
+      observer.events.map(&:to_a)
+    )
   end
 
   def test_only_one_top_level_value
@@ -407,4 +356,7 @@ class ParserTest < Minitest::Test
 
     assert_match "Unexpected token ',' (type comma), expecting any of: eof", err.message
   end
+
+  # TODOs
+  # - [ ] build Handler, which reads observed events and builds and AST that can be converted to Ruby.
 end
