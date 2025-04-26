@@ -76,7 +76,7 @@ class Parser
     case current_token&.value
     when nil
       # An array or object is un-closed)
-      raise ParseError, "unexpected end of input: stack not empty" if stack[:type] != :top
+      raise ParseError, "unexpected end of input: stack not empty" if state[:type] != :top
       return nil
     when Lexer::LBRACKET
       parse_array_start
