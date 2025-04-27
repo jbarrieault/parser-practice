@@ -48,6 +48,9 @@ class Parser
   STRING_EVENT = "event:string"
   NULL_EVENT = "event:null"
   BOOL_EVENT = "event:bool"
+
+  VALUE_EVENTS = [INTEGER_EVENT, FLOAT_EVENT, STRING_EVENT, NULL_EVENT, BOOL_EVENT]
+
   ARRAY_START_EVENT = "event:array_start"
   ARRAY_END_EVENT = "event:array_end"
   OBJECT_START_EVENT = "event:object_start"
