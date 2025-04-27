@@ -1,4 +1,3 @@
-require 'pry'
 require "minitest/autorun"
 require_relative "lexer"
 
@@ -33,6 +32,8 @@ class Event
     @type = type
     @value = value
   end
+
+  attr_reader :type, :value
 
   def to_a
     [@type, @value]
@@ -356,7 +357,4 @@ class ParserTest < Minitest::Test
 
     assert_match "Unexpected token ',' (type comma), expecting any of: eof", err.message
   end
-
-  # TODOs
-  # - [ ] build Handler, which reads observed events and builds and AST that can be converted to Ruby.
 end
