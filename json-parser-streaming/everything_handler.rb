@@ -9,10 +9,14 @@ require_relative "parser"
 class EverythingHandler
   def initialize
     @value = nil
-    @buffer = nil
+    @current_event = nil
+    @stack = []
   end
 
+  attr_reader :value, :current_event, :stack
+
   def handle(event)
+    @current_event = event
     case event.type
     when Parser::ARRAY_START_EVENT
       handle_array_start
@@ -24,15 +28,21 @@ class EverythingHandler
   end
 
   def handle_array_start
+    @stack << '['
     @value = []
   end
 
   def handle_array_end
+    if @stack.last != '['
+      raise "unexpected event value '#{current_event.value}', expected ']'"
+    end
+
+    stack.pop
     :noop
   end
 
   def handle_value(value)
-    if @value.is_a? Array
+    if @stack.last == '['
       @value << value
     else
       @value = value
@@ -58,7 +68,7 @@ class EverythingHandlerTest < Minitest::Test
   end
 
   def test_handle_array
-    source = StringIO.new("[123]")
+    source = StringIO.new("[1,2,3]")
     lexer = Lexer.new(source)
     handler = EverythingHandler.new
     emitter = Emitter.new(observers: [handler])
@@ -66,7 +76,7 @@ class EverythingHandlerTest < Minitest::Test
 
     parser.parse
 
-    assert_equal([123], handler.to_ruby)
+    assert_equal([1,2,3], handler.to_ruby)
   end
 end
 
