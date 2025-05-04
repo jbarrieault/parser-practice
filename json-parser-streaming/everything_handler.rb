@@ -10,7 +10,7 @@ class EverythingHandler
   def initialize
     @value = nil
     @current_event = nil
-    @stack = []
+    @stack = [{ type: :top, buffer: nil } ]
     @buffer = nil
   end
 
@@ -25,6 +25,8 @@ class EverythingHandler
       handle_array_end
     when Parser::OBJECT_START_EVENT
       handle_object_start
+    when Parser::OBJECT_KEY_EVENT
+      handle_object_key
     when Parser::OBJECT_END_EVENT
       handle_object_end
     when *Parser::VALUE_EVENTS
@@ -33,12 +35,12 @@ class EverythingHandler
   end
 
   def handle_array_start
-    @stack << '['
+    @stack << { type: :array }
     @value = []
   end
 
   def handle_array_end
-    if @stack.last != '['
+    if @stack.last[:type] != :array
       raise "unexpected event value '#{current_event.value}', expected ']'"
     end
 
@@ -47,12 +49,21 @@ class EverythingHandler
   end
 
   def handle_object_start
-    stack << '{'
+    stack << { type: :object }
     @value = {}
   end
 
+  def handle_object_key
+    if stack.last[:type] != :object
+      raise "unexpected object key event value"
+    end
+
+
+
+  end
+
   def handle_object_end
-    if stack.last != '{'
+    if stack.last[:type] != :object
       raise "unexpected event value '#{current_event.value}', expected '}'"
     end
 
@@ -61,7 +72,7 @@ class EverythingHandler
   end
 
   def handle_value(value)
-    if @stack.last == '['
+    if @stack.last[:type] == :array
       @value << value
     else
       @value = value
