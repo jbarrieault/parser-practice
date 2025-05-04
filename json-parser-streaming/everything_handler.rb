@@ -11,6 +11,7 @@ class EverythingHandler
     @value = nil
     @current_event = nil
     @stack = []
+    @buffer = nil
   end
 
   attr_reader :value, :current_event, :stack
@@ -22,6 +23,10 @@ class EverythingHandler
       handle_array_start
     when Parser::ARRAY_END_EVENT
       handle_array_end
+    when Parser::OBJECT_START_EVENT
+      handle_object_start
+    when Parser::OBJECT_END_EVENT
+      handle_object_end
     when *Parser::VALUE_EVENTS
       handle_value(event.value)
     end
@@ -35,6 +40,20 @@ class EverythingHandler
   def handle_array_end
     if @stack.last != '['
       raise "unexpected event value '#{current_event.value}', expected ']'"
+    end
+
+    stack.pop
+    :noop
+  end
+
+  def handle_object_start
+    stack << '{'
+    @value = {}
+  end
+
+  def handle_object_end
+    if stack.last != '{'
+      raise "unexpected event value '#{current_event.value}', expected '}'"
     end
 
     stack.pop
@@ -77,6 +96,20 @@ class EverythingHandlerTest < Minitest::Test
     parser.parse
 
     assert_equal([1,2,3], handler.to_ruby)
+  end
+
+  def test_handle_object
+    source = StringIO.new('{}')
+    # source = StringIO.new('{ "hello": "world" }')
+    lexer = Lexer.new(source)
+    handler = EverythingHandler.new
+    emitter = Emitter.new(observers: [handler])
+    parser = Parser.new(lexer:, emitter:)
+
+    parser.parse
+
+    # assert_equal({ "hello" => "world" }, handler.to_ruby)
+    assert_equal({}, handler.to_ruby)
   end
 end
 
