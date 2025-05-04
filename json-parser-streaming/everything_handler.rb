@@ -11,7 +11,6 @@ class EverythingHandler
     @value = nil
     @current_event = nil
     @stack = [{ type: :top, buffer: nil } ]
-    @buffer = nil
   end
 
   attr_reader :value, :current_event, :stack
@@ -58,8 +57,7 @@ class EverythingHandler
       raise "unexpected object key event value"
     end
 
-
-
+    stack.last[:buffer] = current_event.value
   end
 
   def handle_object_end
@@ -72,8 +70,12 @@ class EverythingHandler
   end
 
   def handle_value(value)
-    if @stack.last[:type] == :array
+    state = stack.last
+    if state[:type] == :array
       @value << value
+    elsif state[:type] == :object
+      key = state[:buffer]
+      @value[key] = value
     else
       @value = value
     end
@@ -110,8 +112,7 @@ class EverythingHandlerTest < Minitest::Test
   end
 
   def test_handle_object
-    source = StringIO.new('{}')
-    # source = StringIO.new('{ "hello": "world" }')
+    source = StringIO.new('{ "hello": "world" }')
     lexer = Lexer.new(source)
     handler = EverythingHandler.new
     emitter = Emitter.new(observers: [handler])
@@ -119,8 +120,7 @@ class EverythingHandlerTest < Minitest::Test
 
     parser.parse
 
-    # assert_equal({ "hello" => "world" }, handler.to_ruby)
-    assert_equal({}, handler.to_ruby)
+    assert_equal({ "hello" => "world" }, handler.to_ruby)
   end
 end
 
