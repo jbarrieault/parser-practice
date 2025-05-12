@@ -73,7 +73,7 @@ class EverythingHandler
       if state[:type] == :array
         stack.push({ type: :object, value: obj })
       elsif state[:type] == :object
-        state[state[:next_key]] = obj
+        state[:value][state[:next_key]] = obj
         stack.push({ type: :object, value: obj })
       else
         raise "wat"
@@ -154,8 +154,8 @@ class EverythingHandlerTest < Minitest::Test
   end
 
   def test_nested_structures
-    # source = StringIO.new('{ "hello": "world", "numbers": [1,[2,3],4], "meta": { "data": true } }')
-    source = StringIO.new('{ "hello": "world", "numbers": [1,[2,3],4] }')
+    source = StringIO.new('{ "hello": "world", "numbers": [1,[2,3],4], "meta": { "data": true } }')
+    # source = StringIO.new('{ "hello": "world", "numbers": [1,[2,3],4] }')
     lexer = Lexer.new(source)
     handler = EverythingHandler.new
     emitter = Emitter.new(observers: [handler])
@@ -163,8 +163,8 @@ class EverythingHandlerTest < Minitest::Test
 
     parser.parse
 
-    assert_equal({ "hello" => "world", "numbers" => [1,[2,3],4] }, handler.to_ruby)
-    # assert_equal({ "hello" => "world", "numbers" => [1,[2,3],4], "meta" => { "data" => true } }, handler.to_ruby)
+    # assert_equal({ "hello" => "world", "numbers" => [1,[2,3],4] }, handler.to_ruby)
+    assert_equal({ "hello" => "world", "numbers" => [1,[2,3],4], "meta" => { "data" => true } }, handler.to_ruby)
   end
 end
 
